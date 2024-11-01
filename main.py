@@ -56,7 +56,11 @@ def get_unhappy_cells(grid) -> list:
     result = []
     for x, row in enumerate(grid):
         for y, col in enumerate(row):
+
             cell = x, y
+            if is_empty(cell, grid):
+                continue
+
             if not is_happy(cell, grid):
                 result.append(cell)
     return result
@@ -74,9 +78,6 @@ def get_empty_cells(grid) -> list:
 
 def update_happiness(cell: tuple, grid, unhappy_cells):
 
-    if is_empty(cell, grid):
-        return
-
     if is_happy(cell, grid):
         if cell in unhappy_cells:
             unhappy_cells.remove(cell)
@@ -85,7 +86,7 @@ def update_happiness(cell: tuple, grid, unhappy_cells):
 
 
 def iterate(grid, k: int = 1) -> None:
-    unhappy_cells = {cell for cell in np.ndindex(grid.shape) if not is_happy(cell, grid)}
+    unhappy_cells = {cell for cell in np.ndindex(grid.shape) if not is_happy(cell, grid) and not is_empty(cell, grid)}
     empty_cells = {cell for cell in np.ndindex(grid.shape) if is_empty(cell, grid)}
 
     for _ in range(k):
@@ -102,7 +103,6 @@ def iterate(grid, k: int = 1) -> None:
         total += 1
 
         update_happiness(unhappy_cell, grid, unhappy_cells)
-        update_happiness(empty_cell, grid, unhappy_cells)
 
         for neighbor in get_neighbors(unhappy_cell, grid):
             update_happiness(neighbor, grid, unhappy_cells)
@@ -124,8 +124,8 @@ if __name__ == '__main__':
 
     start = perf_counter()
 
-    n = 50
-    k = 100_000
+    n = 100
+    k = 50_000
     happiness_threshold = 2
 
     total = 0
@@ -161,7 +161,7 @@ if __name__ == '__main__':
     axes[0].axis('off')
 
     axes[1].imshow(final_grid, cmap=cmap, vmin=0, vmax=2)
-    axes[1].set_title(f'Сетка после {total} шагов')
+    axes[1].set_title(f'Сетка после {total:,} шагов')
     axes[1].axis('off')
 
     plt.tight_layout()
