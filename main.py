@@ -53,27 +53,11 @@ def swap_unhappy_with_empty(grid, unhappy_cell: tuple, empty_cell: tuple) -> Non
 
 
 def get_unhappy_cells(grid) -> list:
-    result = []
-    for x, row in enumerate(grid):
-        for y, col in enumerate(row):
-
-            cell = x, y
-            if is_empty(cell, grid):
-                continue
-
-            if not is_happy(cell, grid):
-                result.append(cell)
-    return result
+    return {cell for cell in np.ndindex(grid.shape) if not is_empty(cell, grid) and not is_happy(cell, grid)}
 
 
 def get_empty_cells(grid) -> list:
-    result = []
-    for x, row in enumerate(grid):
-        for y, col in enumerate(row):
-            cell = x, y
-            if is_empty(cell, grid):
-                result.append(cell)
-    return result
+    return {cell for cell in np.ndindex(grid.shape) if is_empty(cell, grid)}
 
 
 def update_happiness(cell: tuple, grid, unhappy_cells):
@@ -85,30 +69,25 @@ def update_happiness(cell: tuple, grid, unhappy_cells):
         unhappy_cells.add(cell)
 
 
-def iterate(grid, k: int = 1) -> None:
-    unhappy_cells = {cell for cell in np.ndindex(grid.shape) if not is_happy(cell, grid) and not is_empty(cell, grid)}
-    empty_cells = {cell for cell in np.ndindex(grid.shape) if is_empty(cell, grid)}
+def iterate(grid) -> None:
 
-    for _ in range(k):
+    while True:
+        unhappy_cells = get_unhappy_cells(grid)
 
         if not unhappy_cells:
-            break
+            return
 
-        unhappy_cell = choice(list(unhappy_cells))
-        empty_cell = choice(list(empty_cells))
+        empty_cells = get_empty_cells(grid)
 
-        swap_unhappy_with_empty(grid, unhappy_cell, empty_cell)
+        random_empty = choice(list(empty_cells))
+        random_unhappy = choice(list(unhappy_cells))
+
+        swap_unhappy_with_empty(grid, random_empty, random_unhappy)
 
         global total
         total += 1
 
-        update_happiness(unhappy_cell, grid, unhappy_cells)
-
-        for neighbor in get_neighbors(unhappy_cell, grid):
-            update_happiness(neighbor, grid, unhappy_cells)
-
-        for neighbor in get_neighbors(empty_cell, grid):
-            update_happiness(neighbor, grid, unhappy_cells)
+        
 
 def unhappy_percentage(grid) -> float:
     total_cells = grid.size
@@ -124,8 +103,7 @@ if __name__ == '__main__':
 
     start = perf_counter()
 
-    n = 100
-    k = 50_000
+    n = 10
     happiness_threshold = 2
 
     total = 0
@@ -140,7 +118,8 @@ if __name__ == '__main__':
 
     final_grid = initial_grid.copy()
 
-    iterate(final_grid, k)
+    # Итерации (шаги) идут пока есть несчастные клетки
+    iterate(final_grid)
 
     unhappy = unhappy_percentage(final_grid)
     empty = empty_percentage(final_grid)
@@ -161,8 +140,10 @@ if __name__ == '__main__':
     axes[0].axis('off')
 
     axes[1].imshow(final_grid, cmap=cmap, vmin=0, vmax=2)
-    axes[1].set_title(f'Сетка после {total:,} шагов')
+    axes[1].set_title(f'Финальная сетка.\nЧисло шагов: {total:,}')
     axes[1].axis('off')
+
+    print(*get_unhappy_cells(final_grid))
 
     plt.tight_layout()
     plt.show()
