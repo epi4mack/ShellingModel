@@ -1,88 +1,168 @@
 import numpy as np
-from os import system
-from random import randint
+import matplotlib.pyplot as plt
+from random import choice
+from matplotlib.colors import ListedColormap
 
-def get_random_cell(grid) -> tuple:
-    n = len(grid)
-    x, y = randint(0, n - 1), randint(0, n - 1)
-    return x, y
+from time import perf_counter
+
+def create_initial_grid(n: int):
+    total_cells = n * n
+    blue_cells = int(total_cells * 0.45)
+    red_cells = int(total_cells * 0.45)
+    empty_cells = total_cells - blue_cells - red_cells
+
+    cells = [1] * blue_cells + [2] * red_cells + [0] * empty_cells
+    np.random.shuffle(cells)
+
+    grid = np.array(cells).reshape(n, n)
+    return grid
+
+
+def is_empty(cell: tuple, grid) -> bool:
+    x, y = cell
+    return grid[x][y] == 0
 
 def get_neighbors(cell: tuple, grid) -> list:
     x, y = cell
     n = len(grid)
     neighbors = []
-
     for dx in [-1, 0, 1]:
         for dy in [-1, 0, 1]:
-            # Пропускаем саму клетку
             if dx == 0 and dy == 0:
                 continue
-            # Новые координаты соседа
             nx, ny = x + dx, y + dy
-            # Проверяем, что не вышли за границы сетки
             if 0 <= nx < n and 0 <= ny < n:
                 neighbors.append((nx, ny))
-                
     return neighbors
 
 
 def is_happy(cell: tuple, grid) -> bool:
     x, y = cell
     cell_color = grid[x][y]
-
     neighbors = get_neighbors(cell, grid)
     neighbor_colors = [grid[c[0]][c[1]] for c in neighbors]
 
-    return neighbor_colors.count(cell_color) > 1
+    global happiness_threshold
+    return neighbor_colors.count(cell_color) >= happiness_threshold
 
-def get_random_unhappy(grid) -> tuple:
-    cell = get_random_cell(grid)
 
-    while is_happy(cell, grid):
-        cell = get_random_cell(grid)
+def swap_unhappy_with_empty(grid, unhappy_cell: tuple, empty_cell: tuple) -> None:
+    x1, y1 = unhappy_cell
+    x2, y2 = empty_cell
+    grid[x1][y1], grid[x2][y2] = grid[x2][y2], grid[x1][y1]
 
-    return cell
 
-def get_random_void(grid) -> tuple:
-    x, y = get_random_cell(grid)
+def get_unhappy_cells(grid) -> list:
+    result = []
+    for x, row in enumerate(grid):
+        for y, col in enumerate(row):
+            cell = x, y
+            if not is_happy(cell, grid):
+                result.append(cell)
+    return result
 
-    while grid[x][y] != 0:
-        x, y = get_random_cell(grid)
 
-    return x, y
-     
+def get_empty_cells(grid) -> list:
+    result = []
+    for x, row in enumerate(grid):
+        for y, col in enumerate(row):
+            cell = x, y
+            if is_empty(cell, grid):
+                result.append(cell)
+    return result
 
-def create_initial_grid(n: int):
-    # Определим количество клеток для каждого типа
-    total_cells = n * n
-    blue_cells = int(total_cells * 0.45)
-    red_cells = int(total_cells * 0.45)
-    empty_cells = total_cells - blue_cells - red_cells
-    
-    # Создаем список с обозначениями для каждого типа клеток
-    # 1 - синие клетки, 2 - красные клетки, 0 - пустые клетки
-    cells = [1] * blue_cells + [2] * red_cells + [0] * empty_cells
-    
-    # Перемешиваем клетки случайным образом
-    np.random.shuffle(cells)
-    
-    # Преобразуем в матрицу NxN
-    grid = np.array(cells).reshape(n, n)
-    
-    return grid
 
+def update_happiness(cell: tuple, grid, unhappy_cells):
+
+    if is_empty(cell, grid):
+        return
+
+    if is_happy(cell, grid):
+        if cell in unhappy_cells:
+            unhappy_cells.remove(cell)
+    else:
+        unhappy_cells.add(cell)
+
+
+def iterate(grid, k: int = 1) -> None:
+    unhappy_cells = {cell for cell in np.ndindex(grid.shape) if not is_happy(cell, grid)}
+    empty_cells = {cell for cell in np.ndindex(grid.shape) if is_empty(cell, grid)}
+
+    for _ in range(k):
+
+        if not unhappy_cells:
+            break
+
+        unhappy_cell = choice(list(unhappy_cells))
+        empty_cell = choice(list(empty_cells))
+
+        swap_unhappy_with_empty(grid, unhappy_cell, empty_cell)
+
+        global total
+        total += 1
+
+        update_happiness(unhappy_cell, grid, unhappy_cells)
+        update_happiness(empty_cell, grid, unhappy_cells)
+
+        for neighbor in get_neighbors(unhappy_cell, grid):
+            update_happiness(neighbor, grid, unhappy_cells)
+
+        for neighbor in get_neighbors(empty_cell, grid):
+            update_happiness(neighbor, grid, unhappy_cells)
+
+def unhappy_percentage(grid) -> float:
+    total_cells = grid.size
+    unhappy_cells_count = len(get_unhappy_cells(grid))
+    return round((unhappy_cells_count / total_cells) * 100, 2)
+
+def empty_percentage(grid) -> float:
+    total_cells = grid.size
+    empty_cells_count = len(get_empty_cells(grid))
+    return round((empty_cells_count / total_cells) * 100, 2)
 
 if __name__ == '__main__':
-    system('cls')
-    n = 4 
-    grid = create_initial_grid(n)
-    
-    x, y = get_random_cell(grid)
-    cell_val = grid[x][y]
 
-    print(is_happy((x,y), grid))
+    start = perf_counter()
 
-    print(grid)
+    n = 50
+    k = 100_000
+    happiness_threshold = 2
 
-    print(f'\nСоседи клетки {(x, y)} = {cell_val}: {get_neighbors((x, y), grid)}')
- 
+    total = 0
+
+    initial_grid = create_initial_grid(n)
+
+    unhappy = unhappy_percentage(initial_grid)
+    empty = empty_percentage(initial_grid)
+    happy = 100 - (unhappy + empty)
+
+    print(f'До итераций:\n   Несчастных: {unhappy}%\n   Счастливых: {happy}%\n   Пустых: {empty}%')
+
+    final_grid = initial_grid.copy()
+
+    iterate(final_grid, k)
+
+    unhappy = unhappy_percentage(final_grid)
+    empty = empty_percentage(final_grid)
+    happy = 100 - (unhappy + empty)
+
+    print(f'\nПосле итераций:\n   Несчастных: {unhappy}%\n   Счастливых: {happy}%\n   Пустых: {empty}%')
+
+    total_time = perf_counter() - start
+    print(f'\nЗаняло времени: {total_time}')
+
+    colors = ['white', 'blue', 'red']
+    cmap = ListedColormap(colors)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    axes[0].imshow(initial_grid, cmap=cmap, vmin=0, vmax=2)
+    axes[0].set_title('Начальная сетка')
+    axes[0].axis('off')
+
+    axes[1].imshow(final_grid, cmap=cmap, vmin=0, vmax=2)
+    axes[1].set_title(f'Сетка после {total} шагов')
+    axes[1].axis('off')
+
+    plt.tight_layout()
+    plt.show()
