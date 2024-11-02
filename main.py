@@ -49,8 +49,7 @@ def is_happy(cell: tuple, grid) -> bool:
 def swap_unhappy_with_empty(grid, unhappy_cell: tuple, empty_cell: tuple) -> None:
     x1, y1 = unhappy_cell
     x2, y2 = empty_cell
-
-    # Прямой обмен значений
+    
     grid[x2][y2], grid[x1][y1] = grid[x1][y1], grid[x2][y2]
 
 
