@@ -26,13 +26,17 @@ def get_neighbors(cell: tuple, grid) -> list:
     x, y = cell
     n = len(grid)
     neighbors = []
+
     for dx in [-1, 0, 1]:
         for dy in [-1, 0, 1]:
+
             if dx == 0 and dy == 0:
                 continue
+
             nx, ny = x + dx, y + dy
             if 0 <= nx < n and 0 <= ny < n:
                 neighbors.append((nx, ny))
+
     return neighbors
 
 
@@ -46,11 +50,10 @@ def is_happy(cell: tuple, grid) -> bool:
     return neighbor_colors.count(cell_color) >= happiness_threshold
 
 
-def swap_unhappy_with_empty(grid, unhappy_cell: tuple, empty_cell: tuple) -> None:
-    x1, y1 = unhappy_cell
-    x2, y2 = empty_cell
+def swap_cells(grid, cell1: tuple, cell2: tuple) -> None:
+    x1, y1 = cell1
+    x2, y2 = cell2
 
-    # Прямой обмен значений
     grid[x2][y2], grid[x1][y1] = grid[x1][y1], grid[x2][y2]
 
 
@@ -62,13 +65,17 @@ def get_empty_cells(grid) -> set:
     return {cell for cell in np.ndindex(grid.shape) if is_empty(cell, grid)}
 
 
-def update_happiness(cell: tuple, grid, unhappy_cells):
+# Обновляет состояние счастья соседей клетки после перемещения клетки
+def update_neighbors_happiness(cell: tuple, grid, unhappy_cells: set, empty_cells: set) -> None:
+    neighbors = get_neighbors(cell, grid)
 
-    if is_happy(cell, grid):
-        if cell in unhappy_cells:
-            unhappy_cells.remove(cell)
-    else:
-        unhappy_cells.add(cell)
+    for n in neighbors:
+        if n not in empty_cells:
+            if is_happy(n, grid):
+                unhappy_cells.discard(n)
+            else:
+                unhappy_cells.add(n)
+
 
 # Медленная функция
 # def iterate(grid, k: int) -> None:
@@ -86,8 +93,7 @@ def update_happiness(cell: tuple, grid, unhappy_cells):
 #         random_empty = choice(list(empty_cells))
 #         random_unhappy = choice(list(unhappy_cells))
 #
-#         swap_unhappy_with_empty(grid, random_unhappy, random_empty)
-
+#         swap_cells(grid, random_unhappy, random_empty)
 
 # Быстрая функция
 def iterate(grid, k: int) -> None:
@@ -96,41 +102,34 @@ def iterate(grid, k: int) -> None:
 
     for i in range(k):
 
+        # Если несчастные клетки закончились - перестаём итерировать
         if not unhappy_cells:
             global total
-            print(i, 'Закончили')
             total = i
             return
 
         random_unhappy = choice(list(unhappy_cells))
         random_empty = choice(list(empty_cells))
 
-        swap_unhappy_with_empty(grid, random_unhappy, random_empty)  # Теперь на месте random_empty находится random_unhappy
+        swap_cells(grid, random_unhappy, random_empty)  # Теперь на месте random_empty находится random_unhappy
+
+        '''
+        После замены клеток на месте random_unhappy лежит пустая клетка,
+        а на месте random_empty - НЕ пустая, но мы не знаем, счастлива
+        она теперь или нет.
+        '''
+
+        unhappy_cells.remove(random_unhappy)  # Теперь эта клетка пустая
 
         empty_cells.remove(random_empty)  # Теперь клетка на этих координатах точно НЕ пустая
         empty_cells.add(random_unhappy)  # Клетка на координатах random_unhappy теперь точно пустая
 
-        unhappy_cells.remove(random_unhappy)  # Теперь эта клетка пустая
+        if not is_happy(random_empty, grid):
+            unhappy_cells.add(random_empty)
 
-        # Теперь у нас есть новая НЕ ПУСТАЯ клетка, а также новая пустая клетка
-        new_cell, new_empty = random_empty, random_unhappy
-
-        if not is_happy(new_cell, grid):
-            unhappy_cells.add(new_cell)
-
-        for cell in get_neighbors(random_unhappy, grid):
-            if cell not in empty_cells:
-                if is_happy(cell, grid):
-                    unhappy_cells.discard(cell)
-                else:
-                    unhappy_cells.add(cell)
-
-        for cell in get_neighbors(new_cell, grid):
-            if cell not in empty_cells:
-                if is_happy(cell, grid):
-                    unhappy_cells.discard(cell)
-                else:
-                    unhappy_cells.add(cell)
+        # Обновляем состояние счастья соседей обеих клеток, которые поменяли местами
+        update_neighbors_happiness(random_unhappy, grid, unhappy_cells, empty_cells)
+        update_neighbors_happiness(random_empty, grid, unhappy_cells, empty_cells)
 
     total = k
 
@@ -146,14 +145,13 @@ def empty_percentage(grid) -> float:
     return round((empty_cells_count / total_cells) * 100, 2)
 
 if __name__ == '__main__':
-
-    start = perf_counter()
-
-    n = 100
-    happiness_threshold = 2
-    k = 1_000_000
+    n = 10 # Размер матрицы
+    happiness_threshold = 2 # Минимальное кол-во друзей для счастья
+    k = 100_000_000 # Число итераций
 
     total = 0
+
+    start = perf_counter()
 
     initial_grid = create_initial_grid(n)
 
@@ -167,14 +165,14 @@ if __name__ == '__main__':
 
     iterate(final_grid, k)
 
+    total_time = perf_counter() - start
+
     unhappy = unhappy_percentage(final_grid)
     empty = empty_percentage(final_grid)
     happy = 100 - (unhappy + empty)
 
     print(f'\nПосле итераций:\n   Несчастных: {unhappy}%\n   Счастливых: {happy}%\n   Пустых: {empty}%')
-
-    total_time = perf_counter() - start
-    print(f'\nЗаняло времени: {total_time}')
+    print(f'\nЗаняло времени: {total_time:.2f} с.')
 
     colors = ['white', 'blue', 'red']
     cmap = ListedColormap(colors)
