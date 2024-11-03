@@ -145,6 +145,7 @@ def empty_percentage(grid) -> float:
     return round((empty_cells_count / total_cells) * 100, 2)
 
 if __name__ == '__main__':
+
     n = 10 # Размер матрицы
     happiness_threshold = 2 # Минимальное кол-во друзей для счастья
     k = 100_000_000 # Число итераций
