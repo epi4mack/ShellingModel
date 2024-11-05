@@ -146,7 +146,7 @@ def empty_percentage(grid) -> float:
 
 if __name__ == '__main__':
 
-    n = 10 # Размер матрицы
+    n = 100 # Размер матрицы
     happiness_threshold = 2 # Минимальное кол-во друзей для счастья
     k = 100_000_000 # Число итераций
 
@@ -188,7 +188,9 @@ if __name__ == '__main__':
     axes[1].set_title(f'Финальная сетка.\nЧисло шагов: {total:,}')
     axes[1].axis('off')
 
-    print(*get_unhappy_cells(final_grid))
+    unhappy_cells = get_unhappy_cells(final_grid)
+    if unhappy_cells:
+        print('Оставшиеся несчастные клетки:', *unhappy_cells)
 
     plt.tight_layout()
     plt.show()
