@@ -77,24 +77,6 @@ def update_neighbors_happiness(cell: tuple, grid, unhappy_cells: set, empty_cell
                 unhappy_cells.add(n)
 
 
-# Медленная функция
-# def iterate(grid, k: int) -> None:
-#
-#     for i in range(k):
-#         unhappy_cells = get_unhappy_cells(grid)
-#
-#         if not unhappy_cells:
-#             global total
-#             total = i
-#             return
-#
-#         empty_cells = get_empty_cells(grid)
-#
-#         random_empty = choice(list(empty_cells))
-#         random_unhappy = choice(list(unhappy_cells))
-#
-#         swap_cells(grid, random_unhappy, random_empty)
-
 # Быстрая функция
 def iterate(grid, k: int) -> None:
     unhappy_cells = get_unhappy_cells(grid)
